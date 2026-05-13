@@ -1,0 +1,100 @@
+# Правила проекта — Backend (FastAPI)
+
+Это стартер Vibe Coding Academy. Пиши понятно — ученик и Claude будут читать.
+
+## Стек
+
+- Python 3.11
+- FastAPI 0.111 + uvicorn
+- SQLAlchemy 2.0 (async) + asyncpg
+- Alembic — миграции
+- pydantic 2.x + pydantic-settings — модели и конфиг
+- aiogram — НЕ держим инстанс бота в бэке. Только клиент к бот-сервису.
+
+Никаких Django, Flask, Tornado, peewee, raw psycopg.
+
+## Структура
+
+```
+src/
+├── app.py             <- FastAPI, lifespan, CORS — НЕ пиши тут бизнес-логику
+├── config.py          <- все ENV в одном Config через get_config()
+├── dependencies.py    <- DI-фабрики для FastAPI (Depends)
+├── database/
+│   ├── database.py    <- Base, SQLAlchemyManager, get_session
+│   └── migrations/    <- alembic
+├── models/            <- SQLAlchemy ORM + pydantic-domain
+├── schemas/           <- pydantic для request/response
+├── routes/api/        <- роуты, один файл = одна область (auth.py, user.py, ...)
+├── services/          <- БИЗНЕС-ЛОГИКА. Сюда выносим всё нетривиальное.
+└── utils/             <- helpers, чистые функции
+```
+
+## Правила кода
+
+### Конфиг
+- Доступ к ENV — ТОЛЬКО через `get_config()`. Никаких `os.environ.get(...)` в модулях.
+- Все ENV-переменные описаны в `config.py` в `Config`. Добавляешь новую — добавь сначала туда.
+
+### Async
+- Всё I/O — async. `async def`, `await`.
+- Никаких блокирующих вызовов в роутах (`time.sleep`, `requests.get`).
+- Для HTTP — httpx.AsyncClient.
+
+### Роуты
+- Один файл в `routes/api/` = одна область. Файл экспортит `router = APIRouter(prefix="/...", tags=["..."])`.
+- НЕ пиши SQL в роутах — выноси в сервис.
+- Возвращай `ApiResult[T]` всегда. Это стандарт ответа.
+- Авторизация — через зависимости из `services/authentication.py`:
+  - `user: Authentication` — TgUser, подпись initData проверена.
+  - `_: InternalAuth` — для internal-эндпоинтов (push, webhook).
+
+### Сервисы
+- Сервис принимает `session: AsyncSession` в `__init__`.
+- Методы async. Один метод = одна логическая операция.
+- НЕ делай commit() в сервисе — это делает зависимость `get_session()`.
+
+### SQLAlchemy
+- Декларативные модели (Mapped[], mapped_column).
+- Запросы: `select(...).where(...)`, `await session.execute(stmt)`.
+- Транзакции — `get_session()` сам коммитит/роллбэкает.
+
+### Alembic
+- Каждое изменение схемы — новая миграция.
+- Команды:
+  ```
+  poetry run alembic revision --autogenerate -m "describe change"
+  poetry run alembic upgrade head
+  ```
+
+## Авторизация (не трогай без понимания)
+
+Парный код к `miniapp-starter`:
+- `utils/token_helper.py` — проверка HMAC. Это сердце авторизации.
+- `services/authentication.py` — DI-зависимости.
+
+`BOT_TOKEN` в .env ДОЛЖЕН совпадать с тем что в bot-starter. Иначе подпись не сойдётся.
+
+## Связь с ботом
+
+Бот живёт в отдельном процессе (`bot-starter`). Бэкенд НЕ имеет aiogram-инстанса —
+он шлёт пуши через HTTP на `BOT_PUSH_URL`. См. `services/bot.py`.
+
+## Чего НЕ делать
+
+- Не пиши SQL строкой. Только через SQLAlchemy ORM/Core.
+- Не делай `print` — используй `logging`.
+- Не игнорируй ошибки (`try: ... except: pass`).
+- Не клади бизнес-логику в роуты.
+- Не возвращай ORM-модель напрямую — конвертируй через `UserBase.model_validate(user)`.
+- Не клади БД-токены / секреты в код. Только `.env` → `Config`.
+
+## Как добавить новый эндпоинт
+
+1. Создай файл `routes/api/<область>.py`.
+2. Объяви `router = APIRouter(prefix="/<область>", tags=["<область>"])`.
+3. Напиши хендлер, верни `ApiResult[T]`.
+4. Если нужна авторизация — добавь `_: Authentication`.
+5. Если нужна БД — добавь `Depends(get_user_service)` или новую DI-фабрику.
+
+Авто-сборка из `routes/api/__init__.py` подцепит файл сама.

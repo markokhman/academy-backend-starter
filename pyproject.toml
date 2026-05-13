@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "backend-starter"
+version = "0.1.0"
+description = "Vibe Coding Academy backend starter"
+authors = []
+license = ""
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "0.111.1"
+uvicorn = "0.30.1"
+pydantic = "2.7.0"
+pydantic-settings = "2.8.1"
+python-dotenv = "1.0.1"
+sqlalchemy = "2.0.31"
+asyncpg = "0.29.0"
+alembic = "1.13.2"
+greenlet = "3.0.3"
+aiogram = "3.8.0"
+httpx = "0.27.0"
+
+[tool.ruff.lint]
+ignore = ["F403", "E712"]
+
+[tool.ruff]
+exclude = ["src/database/migrations"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
