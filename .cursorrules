@@ -13,6 +13,19 @@
 
 Никаких Django, Flask, Tornado, peewee, raw psycopg.
 
+## Окружения
+
+Академия использует три окружения: `dev` | `beta` | `public` (= production).
+- `ENVIRONMENT` читается из `.env` через `get_config().general.environment`.
+- В коде проверяешь через `config.general.environment == "dev"` (не "development").
+- mock-bypass подписи initData разрешён ТОЛЬКО при `ENVIRONMENT=dev`. См. `utils/token_helper.py`.
+- Когда добавляешь логику с побочкой (push в реальные чаты, оплаты, email) —
+  если это не тестовый сценарий, защити её от `ENVIRONMENT=dev` (логируй вместо отправки).
+- Каждое окружение = свой BOT_TOKEN, своя DATABASE_URL, свой PUSH_INTERNAL_TOKEN.
+- Никогда не хардкодь URL/секреты под конкретное окружение — всё через env.
+
+Подробности — `concepts/environments.md` в репозитории академии.
+
 ## Структура
 
 ```

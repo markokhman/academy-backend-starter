@@ -20,7 +20,11 @@ class EnvSettings(BaseSettings):
 
 
 class GeneralParams(EnvSettings):
-    environment: str = Field("development", alias="ENVIRONMENT")
+    # Три окружения академии: "dev" | "beta" | "public" (= production).
+    # См. concepts/environments.md в репозитории академии.
+    # При environment="dev" разрешён mock-bypass подписи initData (для разработки
+    # миниапки в браузере без Telegram). В beta/public mock запрещён.
+    environment: str = Field("dev", alias="ENVIRONMENT")
     debug: bool = Field(False, alias="DEBUG")
     cors_allow_origins: str = Field("*", alias="CORS_ALLOW_ORIGINS")
 

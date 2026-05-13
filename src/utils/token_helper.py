@@ -130,8 +130,10 @@ def authenticate_token(token: str) -> InitData:
     ttl_seconds = config.tg.init_data_ttl_hours * 3600
     init_data, init_data_dict = decode_init_data(init_data_raw, ttl_seconds)
 
-    # В development режиме можно пропускать проверку подписи (для мок-юзера из миниапки)
-    if config.general.environment == "development" and init_data_dict.get("hash") == "mock_hash":
+    # В dev-окружении можно пропускать проверку подписи (для mock-юзера из миниапки в браузере).
+    # В beta/public mock-bypass НЕ работает — всегда строгая HMAC-проверка.
+    # См. concepts/environments.md
+    if config.general.environment == "dev" and init_data_dict.get("hash") == "mock_hash":
         log.warning("DEV mode: skipping signature check (mock initData)")
         return init_data
 
